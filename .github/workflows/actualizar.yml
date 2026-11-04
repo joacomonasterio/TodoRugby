@@ -1,0 +1,55 @@
+# Cada hora vuelve a generar datos-fijos.js con los partidos de todas las fuentes
+# y publica la app en GitHub Pages, así siempre tiene una copia reciente aunque las fuentes se caigan.
+name: Actualizar partidos
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: actualizar
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generar partidos guardados
+        env:
+          TZ: America/Argentina/Buenos_Aires
+        run: python3 herramientas/generar_fijos.py
+      - name: Guardar en el repositorio si cambió algo
+        run: |
+          if git diff --quiet datos-fijos.js; then
+            echo "Sin cambios"
+          else
+            git config user.name "todorugby-bot"
+            git config user.email "todorugby-bot@users.noreply.github.com"
+            git add datos-fijos.js
+            git commit -m "Actualizar partidos guardados"
+            git push
+          fi
+      - name: Preparar sitio
+        run: mkdir _sitio && cp index.html styles.css config.js datos-fijos.js app.js detalle.js tablas.js _sitio/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _sitio
+      - id: deploy
+        uses: actions/deploy-pages@v4
