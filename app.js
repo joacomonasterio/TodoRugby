@@ -338,14 +338,14 @@
   }
 
   function visibles() {
-    const deEspn = new Set();
-    partidos.forEach((p) => { if (p.fuente === "ESPN") deEspn.add(claveCruce(p)); });
-    return sinDuplicadosInternos([...partidos.values()].filter((p) =>
+    const candidatos = [...partidos.values()].filter((p) =>
       activas.has(p.liga.clave) &&
       (!p.fijo || fijoVigente(p)) &&
-      (p.fijo || !(p.liga.respaldoDe && fuenteElegida(p.liga.respaldoDe) !== p.liga.fuente)) && // se usa la mejor fuente disponible
-      !(p.fuente !== "ESPN" && deEspn.has(claveCruce(p)))
-    ));
+      (p.fijo || !(p.liga.respaldoDe && fuenteElegida(p.liga.respaldoDe) !== p.liga.fuente)) // se usa la mejor fuente disponible
+    );
+    // Si un partido está en ESPN y en otra fuente, queda el de ESPN (solo entre los que se muestran)
+    const deEspn = new Set(candidatos.filter((p) => p.fuente === "ESPN").map(claveCruce));
+    return sinDuplicadosInternos(candidatos.filter((p) => !(p.fuente !== "ESPN" && deEspn.has(claveCruce(p)))));
   }
 
   // ---------- Filtros y días ----------
@@ -609,7 +609,7 @@
     TZ, ESPN, WR, esc, horaArg, getJSON, partidos, BANDERAS, pillsTv, equipoHtml, iconoEquipo,
     nombreEs, ligasActivas: () => LIGAS.filter((l) => activas.has(l.clave)),
     // El mismo partido cargado desde World Rugby (para mostrar detalle de partidos de BBC)
-    ligas: LIGAS,
+    ligas: LIGAS, visibles: () => visibles(),
     gemeloWr: (p) => [...partidos.values()].find((x) => x.wrMatchId && claveCruce(x) === claveCruce(p)),
     $detalle,
   };
